@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Edit Teacher/Staff{% endblock %}
+{% block content %}
+    <h1>Edit Teacher/Staff (ID: {{ teacher.id }})</h1>
+    <form method="POST" action="/edit_teacher/{{ teacher.id }}">
+        <div class="row">
+           <div class="col-12">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" value="{{ teacher.name }}" required>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" value="{{ teacher.email }}" required>
+            </div>
+         </div>
+         <div class="row">
+            <div class="col-12">
+                <label for="class_id">Assigned Class ID:</label>
+                <input type="number" id="class_id" name="class_id" value="{{ teacher.class_id }}">
+           </div>
+        </div>
+         <div class="row">
+             <div class="col-12">
+                  <input type="submit" value="Update Teacher/Staff">
+            </div>
+        </div>
+    </form>
+{% endblock %}
+

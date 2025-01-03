@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Pay Fees{% endblock %}
+{% block content %}
+    <h1>Pay Fees for Student (ID: {{ student.id }})</h1>
+    <form method="POST" action="/pay_fees/{{ student.id }}">
+        <div class="row"> 
+            <div class="col-12">
+                <label for="amount">Amount to Pay:</label>
+                <input type="number" id="amount" name="amount" step="0.01" required>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <input type="submit" value="Pay Fees">
+            </div>
+        </div>
+    </form>
+{% endblock %}
+

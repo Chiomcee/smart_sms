@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<h2>Send Notifications</h2>
+<form action="{{ url_for('send_notification') }}" method="post">
+    <div class="row"> 
+        <div class="col-12">
+            <label for="recipient">Recipient (User ID):</label>
+            <input type="text" id="recipient" name="recipient" required>
+        </div>
+    </div>
+    <div class="row"> 
+        <div class="col-12">
+            <label for="message">Message:</label>
+            <textarea id="message" name="message" rows="4" required></textarea>
+        </div>
+    </div>
+
+    <div class="row"> 
+        <div class="col-12">
+            <label for="status">Status:</label>
+            <select id="status" name="status" required>
+                <option value="Sent">Sent</option>
+                <option value="Failed">Failed</option>
+            </select>
+        </div>
+    </div>
+    <div class="row"> 
+        <div class="col-12">
+            <button type="submit">Send Notification</button>
+        </div>
+    </div>
+</form>
+{% endblock %}
