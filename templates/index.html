@@ -1,43 +1,43 @@
- {% extends 'base.html' %}
- {% block title %}Home{% endblock %}
- {% block content %}
-     <div class="container py-4">
-         <div class="row">
-             <div class="col-12">
-                 <nav>
-                     <a class="nav-link" href="{{ url_for('index') }}">Home</a>
-                     {% if current_user.is_authenticated %}
-                         <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
-                         {% if current_user.role == 'Admin' %}
-                             <a class="nav-link" href="{{ url_for('add_student') }}">Add Student</a>
-                             <a class="nav-link" href="{{ url_for('add_teacher') }}">Add Teacher</a>
-                             <a class="nav-link" href="{{ url_for('add_class') }}">Add Class</a>
-                             <a class="nav-link" href="{{ url_for('reports') }}">Reports</a>
-                         {% endif %}
-                         {% if current_user.role == 'Teacher' %}
-                             <a class="nav-link" href="{{ url_for('manage_classes') }}">Manage Classes</a>
-                         {% endif %}
-                         {% if current_user.role == 'Guardian' %}
-                             <a class="nav-link" href="{{ url_for('view_student') }}">View Student</a>
-                             <a class="nav-link" href="{{ url_for('pay_fees') }}">Pay Fees</a>
-                         {% endif %}
-                     {% else %}
-                         <a class="nav-link" href="{{ url_for('login') }}">Login</a>
-                         <a class="nav-link" href="{{ url_for('register') }}">Register</a>
-                     {% endif %}
-                 </nav>
-             </div>
-         </div>
-         <div class="row">
-             <div class="col-12">
-                 <h2>Welcome to Smart_SMS!</h2>
-                 <p>This is the school homepage. Manage students, teachers, and classes with ease.</p>
- 
-                 {% if current_user.is_authenticated %}
-                     <p>Logged in as: {{ current_user.username }} (Role: {{ current_user.role }})</p>
-                 {% endif %}
-             </div>
-         </div>
-     </div>
- {% endblock %}
- 
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <div class="col-12">
+      <nav>
+        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+        {% if session.get('loggedin') %}
+        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+        {% if session.get('role') == 'Admin' %}
+        <a class="nav-link" href="{{ url_for('add_student') }}">Add Student</a>
+        <a class="nav-link" href="{{ url_for('add_teacher') }}">Add Teacher</a>
+        <a class="nav-link" href="{{ url_for('add_class') }}">Add Class</a>
+        <a class="nav-link" href="{{ url_for('reports') }}">Reports</a>
+        {% endif %}
+        {% if session.get('role') == 'Teacher' %}
+        <a class="nav-link" href="{{ url_for('manage_classes') }}">Manage Classes</a>
+        {% endif %}
+        {% if session.get('role') == 'Guardian' %}
+        <a class="nav-link" href="{{ url_for('view_student') }}">View Student</a>
+        <a class="nav-link" href="{{ url_for('pay_fees') }}">Pay Fees</a>
+        {% endif %}
+        {% else %}
+        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+        <a class="nav-link" href="{{ url_for('register') }}">Register</a>
+        {% endif %}
+      </nav>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-12">
+      <h2>Welcome to Smart_SMS!</h2>
+      <p>This is the school homepage. Manage students, teachers, and classes with ease.</p>
+      {% if session.get('loggedin') %}
+      <p>Logged in as: {{ session.get('username') }} (Role: {{ session.get('role') }})</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

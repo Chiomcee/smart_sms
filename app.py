@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from sqlalchemy import create_engine, text
 from models.models import *
 import hashlib
@@ -11,8 +12,21 @@ app.secret_key = "Chiomceesecrets"
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:Mysqlpw%40232024@localhost/sms_users'
 engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], echo=True)
 
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
+
 # Create tables if they don't exist (using Base.metadata.create_all)
 Base.metadata.create_all(engine)
+
+# UserLoader for Flask-Login
+@login_manager.user_loader
+def load_user(user_id):
+    with engine.connect() as con:
+        result = con.execute(text(f"SELECT * FROM sms_users WHERE id = {user_id}"))
+        user = result.fetchone()
+    return User(id=user['id'], username=user['username'], role=user['role'])
 
 # Route for the Home Page
 @app.route('/')
@@ -35,15 +49,20 @@ def register():
         
         # Hash the password
         hash = hashlib.sha256((password + app.secret_key).encode()).hexdigest()
-        
-        # Insert the new user into the database
-        with engine.connect() as con:
-            con.execute(text(f"INSERT INTO sms_users (username, password, role) VALUES ('{username}', '{hash}', '{role}')"))
-            con.commit()
-        
-        msg = "Account created successfully!"
-        return redirect(url_for('login', msg=msg))
-    
+
+        # Insert the new user into the database using SQLAlchemy ORM
+        new_user = User(username=username, password=hash, role=role)
+        try:
+            # Use the connection from SQLAlchemy to add and commit the new user
+            with engine.connect() as con:
+                con.execute(text(f"INSERT INTO user (username, password, role) VALUES ('{username}', '{hash}', '{role}')"))
+                con.commit()
+            msg = "Account created successfully!"
+            return redirect(url_for('login', msg=msg))
+        except Exception as e:
+            msg = f"An error occurred: {str(e)}"
+            return render_template('register.html', msg=msg)
+
     return render_template('register.html', msg=msg)
 
 # Route for Logging In
@@ -59,7 +78,7 @@ def login():
 
         # Check if the user exists in the database
         with engine.connect() as con:
-            result = con.execute(text(f"SELECT * FROM sms_users WHERE username = '{username}' AND password = '{hash}'"))
+            result = con.execute(text(f"SELECT * FROM user WHERE username = '{username}' AND password = '{hash}'"))
             account = result.fetchone()
             con.commit()
 
