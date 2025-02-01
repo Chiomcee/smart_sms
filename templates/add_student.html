@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% comment %} {% extends 'base.html' %}
 {% block title %}Add Student{% endblock %}
 {% block content %}
     <h1>Add Student</h1>
@@ -33,7 +33,36 @@
             </div>
         </div>
     </form>
+{% endblock %} {% endcomment %}
+
+
+{% extends 'base.html' %}
+{% block title %}Add Student{% endblock %}
+{% block content %}
+    <h1 class="text-center mb-4">Add Student</h1>
+    <form method="POST" action="/add_student" class="col-md-6 mx-auto">
+        <div class="mb-3">
+            <label for="name" class="form-label">Name</label>
+            <input type="text" id="name" name="name" class="form-control" placeholder="Enter student's name" required>
+        </div>
+        <div class="mb-3">
+            <label for="dob" class="form-label">Date of Birth</label>
+            <input type="date" id="dob" name="dob" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label for="guardian_id" class="form-label">Guardian ID</label>
+            <input type="number" id="guardian_id" name="guardian_id" class="form-control" placeholder="Enter guardian ID" required>
+        </div>
+        <div class="mb-3">
+            <label for="class_id" class="form-label">Class ID</label>
+            <input type="number" id="class_id" name="class_id" class="form-control" placeholder="Enter class ID" required>
+        </div>
+        <div class="mb-3 text-center">
+            <input type="submit" value="Add Student" class="btn btn-success w-100">
+        </div>
+    </form>
 {% endblock %}
+
 
 
 

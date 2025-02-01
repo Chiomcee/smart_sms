@@ -1,136 +1,297 @@
 from flask import Flask, render_template, request, redirect, url_for, session
-from flask_mysqldb import MySQL
-import MySQLdb.cursors
-import re
+from sqlalchemy import create_engine, text
+from models.models import *
+import hashlib
+from datetime import datetime
 
-    
 app = Flask(__name__)
-   
-app.secret_key = 'chomcee1234'  
-app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'Mysqlpw@232024'
-app.config['MYSQL_DB'] = 'sms_users'
-  
-mysql = MySQL(app)
 
+# Configure the application and database URI
+app.secret_key = "Chiomceesecrets"
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:Mysqlpw%40232024@localhost/sms_users'
+engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], echo=True)
 
-# --- Routes for User Authentication ---
+# Create tables if they don't exist (using Base.metadata.create_all)
+Base.metadata.create_all(engine)
+
+# Route for the Home Page
 @app.route('/')
-@app.route('/index')
 def index():
-    """Route for the home page"""
-    # Example current user, in production, user should be retrieved from database
-    class User:
-      def __init__(self, username, role, is_authenticated):
-        self.username = username
-        self.role = role
-        self.is_authenticated = is_authenticated
-    current_user = User(session.get('username'), session.get('role'), session.get('is_authenticated')) if session.get('is_authenticated') else User(None,None,False)
-    return render_template('index.html', current_user=current_user) # pass current_user to the template.
+    return render_template('index.html')
 
-@app.route('/login', methods =['GET', 'POST'])
-def login():
-    message = ''
+# Route for Registering a User (Admin, Teacher, Guardian)
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    msg = ""
     if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
-        username = request.form['username']        
+        username = request.form['username'].lower()
         password = request.form['password']
-        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute('SELECT * FROM registrations WHERE status="active" AND username = % s AND password = % s', (username, password, ))
-        user = cursor.fetchone()
-        if user:
-            session['loggedin'] = True
-            session['userid'] = user['id']
-            session['name'] = user['first_name']
-            session['username'] = user['']
-            session['role'] = user['type']
-            message = 'Logged in successfully !'            
-            return render_template('index.html', message = message)
-        else:
-            message = 'Please enter correct username / password !'
-    return render_template('login.html', message = message)
+        password2 = request.form['password2']
+        role = request.form['role']
+        
+        if password != password2:
+            msg = "Passwords do not match!"
+            return render_template('register.html', msg=msg)
+        
+        # Hash the password
+        hash = hashlib.sha256((password + app.secret_key).encode()).hexdigest()
+        
+        # Insert the new user into the database
+        with engine.connect() as con:
+            con.execute(text(f"INSERT INTO sms_users (username, password, role) VALUES ('{username}', '{hash}', '{role}')"))
+            con.commit()
+        
+        msg = "Account created successfully!"
+        return redirect(url_for('login', msg=msg))
+    
+    return render_template('register.html', msg=msg)
 
+# Route for Logging In
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    msg = ""
+    if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
+        username = request.form['username'].lower()
+        password_entered = request.form['password']
+        
+        # Hash the entered password
+        hash = hashlib.sha256((password_entered + app.secret_key).encode()).hexdigest()
+
+        # Check if the user exists in the database
+        with engine.connect() as con:
+            result = con.execute(text(f"SELECT * FROM sms_users WHERE username = '{username}' AND password = '{hash}'"))
+            account = result.fetchone()
+            con.commit()
+
+        if account:
+            session['loggedin'] = True
+            session['id'] = account.id
+            session['username'] = account.username
+            session['role'] = account.role
+            return redirect(url_for('home'))
+        else:
+            msg = "Incorrect username/password"
+    
+    return render_template('login.html', msg=msg)
+
+# Route for the Home Page (After Login)
+@app.route('/home')
+def home():
+    if 'loggedin' in session:
+        return render_template('home.html', username=session['username'])
+    return redirect(url_for('login'))
+
+# Route for Adding a Student
+@app.route('/add_student', methods=['GET', 'POST'])
+def add_student():
+    if request.method == 'POST':
+        name = request.form['name']
+        dob = request.form['dob']
+        guardian_id = request.form['guardian_id']
+        class_id = request.form['class_id']
+        
+        # Add student to the database
+        student = Student(name=name, dob=dob, guardian_id=guardian_id, class_id=class_id)
+        db.session.add(student)
+        db.session.commit()
+        
+        return redirect(url_for('home'))
+    
+    return render_template('add_student.html')
+
+# Route for Adding a Teacher
+@app.route('/add_teacher', methods=['GET', 'POST'])
+def add_teacher():
+    if request.method == 'POST':
+        name = request.form['name']
+        email = request.form['email']
+        class_id = request.form['class_id']
+        
+        # Add teacher to the database
+        teacher = Teacher(name=name, email=email, class_id=class_id)
+        db.session.add(teacher)
+        db.session.commit()
+        
+        return redirect(url_for('home'))
+    
+    return render_template('add_teacher.html')
+
+# Route for Adding a Class
+@app.route('/add_class', methods=['GET', 'POST'])
+def add_class():
+    if request.method == 'POST':
+        class_name = request.form['class_name']
+        teacher_id = request.form['teacher_id']
+        
+        # Add class to the database
+        new_class = Class(class_name=class_name, teacher_id=teacher_id)
+        db.session.add(new_class)
+        db.session.commit()
+        
+        return redirect(url_for('home'))
+    
+    return render_template('add_class.html')
+
+# Route for Paying Fees (Student)
+@app.route('/pay_fees/<int:student_id>', methods=['GET', 'POST'])
+def pay_fees(student_id):
+    student = Student.query.get_or_404(student_id)
+    
+    if request.method == 'POST':
+        amount = request.form['amount']
+        fee_payment = FeePayment(student_id=student.id, amount=amount)
+        db.session.add(fee_payment)
+        db.session.commit()
+        
+        return redirect(url_for('home'))
+    
+    return render_template('pay_fee.html', student=student)
+
+# Route for Logging Out
 @app.route('/logout')
 def logout():
     session.pop('loggedin', None)
-    session.pop('userid', None)
+    session.pop('id', None)
     session.pop('username', None)
-    session.pop('name', None)
-    session.pop('role', None)
-    return redirect(url_for('login'))
+    return redirect(url_for('index'))
 
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    message = ''
-    print(request.form)
-    if request.method == 'POST':
-        if 'username' in request.form and 'password' in request.form:
-            username = request.form['username']
-            password = request.form['password']
-            cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-            cursor.execute('SELECT * FROM registrations WHERE username = %s', (username,))
-            user = cursor.fetchone()
-            if user:
-                message = 'Account already exists!'
-            elif not re.match(r'[A-Za-z0-9]+', username):
-                message = 'Username must contain only characters and numbers!'
-            elif not username or not password:
-                message = 'Please fill out the form!'
-            else:
-                try:
-                    cursor.execute('INSERT INTO registrations VALUES (NULL, %s, %s)', (username, password))
-                    mysql.connection.commit()
-                    message = 'You have successfully registered!'
-                except Exception as e:
-                    message = f"An error occurred: {e}"
-        else:
-            message = 'Please fill all required fields!'
-    return render_template('register.html', message=message)
+if __name__ == "__main__":
+    app.run(debug=True)
 
-@app.route('/add_class', methods=['GET', 'POST'])
-def add_class():
-    message = ''  # Initialize an empty message
-    if request.method == 'POST':  # Check if the request method is POST
-        print(request.form) # Print the form values for debugging
-        if 'class_name' in request.form and 'teacher_id' in request.form:  # Check if required fields are present
-            class_name = request.form['class_name']
-            teacher_id = request.form['teacher_id']
 
-            #Input validation
-            if not class_name:
-                message = 'Class name cannot be empty!'
-            elif not teacher_id:
-                message = 'Teacher id cannot be empty!'
-            else:
-                try:
-                    # Connect to the database
-                    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
 
-                    # Check if the class already exists
-                    cursor.execute('SELECT * FROM classes WHERE class_name = %s', (class_name,))
-                    existing_class = cursor.fetchone()
-                    if existing_class:
-                        message = 'Class already exists!'
-                    else:
-                        # Check if the teacher exists
-                        cursor.execute('SELECT * FROM registrations WHERE id = %s AND type="teacher" ', 
-                                    (teacher_id,))
-                        if teacher_exists := cursor.fetchone():
-                            try:
-                                # Insert the new class into the database
-                                sql = 'INSERT INTO classes VALUES (NULL, %s, %s)' 
+# from flask_mysqldb import MySQL
+# import MySQLdb.cursors
+# import re
 
-                                message = 'Class added successfully!'
-                            except Exception as e:
-                                message = f'Error adding class to database: {e}'
-                        else:
-                            message = 'Invalid teacher id!'
-                except Exception as e:
-                        message = f'Error accessing database: {e}'
-    else:
-        message = 'Please fill all required fields' # Error message if form values are not present
+    
+# app = Flask(__name__)
+   
+# app.secret_key = 'chomcee1234'  
+# app.config['MYSQL_HOST'] = 'localhost'
+# app.config['MYSQL_USER'] = 'root'
+# app.config['MYSQL_PASSWORD'] = 'Mysqlpw@232024'
+# app.config['MYSQL_DB'] = 'sms_users'
+  
+# mysql = MySQL(app)
 
-    return render_template('add_class.html', message=message)
+
+# # --- Routes for User Authentication ---
+# @app.route('/')
+# @app.route('/index')
+# def index():
+#     """Route for the home page"""
+#     # Example current user, in production, user should be retrieved from database
+#     class User:
+#       def __init__(self, username, role, is_authenticated):
+#         self.username = username
+#         self.role = role
+#         self.is_authenticated = is_authenticated
+#     current_user = User(session.get('username'), session.get('role'), session.get('is_authenticated')) if session.get('is_authenticated') else User(None,None,False)
+#     return render_template('index.html', current_user=current_user) # pass current_user to the template.
+
+# @app.route('/login', methods =['GET', 'POST'])
+# def login():
+#     message = ''
+#     if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
+#         username = request.form['username']        
+#         password = request.form['password']
+#         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+#         cursor.execute('SELECT * FROM registrations WHERE status="active" AND username = % s AND password = % s', (username, password, ))
+#         user = cursor.fetchone()
+#         if user:
+#             session['loggedin'] = True
+#             session['userid'] = user['id']
+#             session['name'] = user['first_name']
+#             session['username'] = user['']
+#             session['role'] = user['type']
+#             message = 'Logged in successfully !'            
+#             return render_template('index.html', message = message)
+#         else:
+#             message = 'Please enter correct username / password !'
+#     return render_template('login.html', message = message)
+
+# @app.route('/logout')
+# def logout():
+#     session.pop('loggedin', None)
+#     session.pop('userid', None)
+#     session.pop('username', None)
+#     session.pop('name', None)
+#     session.pop('role', None)
+#     return redirect(url_for('login'))
+
+# @app.route('/register', methods=['GET', 'POST'])
+# def register():
+#     message = ''
+#     print(request.form)
+#     if request.method == 'POST':
+#         if 'username' in request.form and 'password' in request.form:
+#             username = request.form['username']
+#             password = request.form['password']
+#             cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+#             cursor.execute('SELECT * FROM registrations WHERE username = %s', (username,))
+#             user = cursor.fetchone()
+#             if user:
+#                 message = 'Account already exists!'
+#             elif not re.match(r'[A-Za-z0-9]+', username):
+#                 message = 'Username must contain only characters and numbers!'
+#             elif not username or not password:
+#                 message = 'Please fill out the form!'
+#             else:
+#                 try:
+#                     cursor.execute('INSERT INTO registrations VALUES (NULL, %s, %s)', (username, password))
+#                     mysql.connection.commit()
+#                     message = 'You have successfully registered!'
+#                 except Exception as e:
+#                     message = f"An error occurred: {e}"
+#         else:
+#             message = 'Please fill all required fields!'
+#     return render_template('register.html', message=message)
+
+# @app.route('/add_class', methods=['GET', 'POST'])
+# def add_class():
+#     message = ''  # Initialize an empty message
+#     if request.method == 'POST':  # Check if the request method is POST
+#         print(request.form) # Print the form values for debugging
+#         if 'class_name' in request.form and 'teacher_id' in request.form:  # Check if required fields are present
+#             class_name = request.form['class_name']
+#             teacher_id = request.form['teacher_id']
+
+#             #Input validation
+#             if not class_name:
+#                 message = 'Class name cannot be empty!'
+#             elif not teacher_id:
+#                 message = 'Teacher id cannot be empty!'
+#             else:
+#                 try:
+#                     # Connect to the database
+#                     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+
+#                     # Check if the class already exists
+#                     cursor.execute('SELECT * FROM classes WHERE class_name = %s', (class_name,))
+#                     existing_class = cursor.fetchone()
+#                     if existing_class:
+#                         message = 'Class already exists!'
+#                     else:
+#                         # Check if the teacher exists
+#                         cursor.execute('SELECT * FROM registrations WHERE id = %s AND type="teacher" ', 
+#                                     (teacher_id,))
+#                         if teacher_exists := cursor.fetchone():
+#                             try:
+#                                 # Insert the new class into the database
+#                                 sql = 'INSERT INTO classes VALUES (NULL, %s, %s)' 
+
+#                                 message = 'Class added successfully!'
+#                             except Exception as e:
+#                                 message = f'Error adding class to database: {e}'
+#                         else:
+#                             message = 'Invalid teacher id!'
+#                 except Exception as e:
+#                         message = f'Error accessing database: {e}'
+#     else:
+#         message = 'Please fill all required fields' # Error message if form values are not present
+
+#     return render_template('add_class.html', message=message)
 
 
 # # --- Add Student ---

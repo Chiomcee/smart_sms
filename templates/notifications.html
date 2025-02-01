@@ -1,35 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Notifications{% endblock %}
-
 {% block content %}
-<h2>Send Notifications</h2>
-<form action="{{ url_for('send_notification') }}" method="post">
-    <div class="row"> 
-        <div class="col-12">
-            <label for="recipient">Recipient (User ID):</label>
-            <input type="text" id="recipient" name="recipient" required>
+    <h2 class="text-center mb-4">Send Notifications</h2>
+    <form action="{{ url_for('send_notification') }}" method="post" class="col-md-6 mx-auto">
+        <div class="mb-3">
+            <label for="recipient" class="form-label">Recipient (User ID)</label>
+            <input type="text" id="recipient" name="recipient" class="form-control" placeholder="Enter user ID" required>
         </div>
-    </div>
-    <div class="row"> 
-        <div class="col-12">
-            <label for="message">Message:</label>
-            <textarea id="message" name="message" rows="4" required></textarea>
+        <div class="mb-3">
+            <label for="message" class="form-label">Message</label>
+            <textarea id="message" name="message" class="form-control" rows="4" required></textarea>
         </div>
-    </div>
-
-    <div class="row"> 
-        <div class="col-12">
-            <label for="status">Status:</label>
-            <select id="status" name="status" required>
+        <div class="mb-3">
+            <label for="status" class="form-label">Status</label>
+            <select id="status" name="status" class="form-control" required>
                 <option value="Sent">Sent</option>
                 <option value="Failed">Failed</option>
             </select>
         </div>
-    </div>
-    <div class="row"> 
-        <div class="col-12">
-            <button type="submit">Send Notification</button>
+        <div class="mb-3 text-center">
+            <button type="submit" class="btn btn-primary w-100">Send Notification</button>
         </div>
-    </div>
-</form>
+    </form>
 {% endblock %}
